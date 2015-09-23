@@ -1,17 +1,12 @@
 package race.main.com.deadrace;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.location.Address;
-import android.location.Geocoder;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
-import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -19,6 +14,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -26,16 +23,15 @@ import com.parse.FindCallback;
 import com.parse.ParseException;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
-import com.parse.ParseUser;
 import com.parse.SaveCallback;
 
-import java.io.IOException;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements LocationListener, GoogleMap.OnMarkerClickListener {
 
     // Might be null if Google Play services APK is not available.
     private GoogleMap mMap;
+    private Circle mCircle;
 
     // flag for GPS status
     boolean isGPSEnabled = false;
@@ -58,11 +54,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     // Declaring a Location Manager
     protected LocationManager locationManager;
 
-    ParseUser user = ParseUser.getCurrentUser();
-
-
+    User user = new User(MapsActivity.this);
     ParseObject locationObject = new ParseObject("Location");
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +63,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
         setContentView(R.layout.activity_maps);
 
         setUpMapIfNeeded();
+        getLocation();
         getEnemy();
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
@@ -161,8 +155,12 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
     }
 
     private void drawMarker (LatLng latLng, String who){
-        if (who == user.getUsername())
+        if (who == user.getUsername()) {
+            double radiusInMeters = 20;
+            CircleOptions circleOptions = new CircleOptions().center(latLng).radius(radiusInMeters).fillColor(Color.TRANSPARENT).strokeColor(Color.BLUE).strokeWidth(2);
+            mCircle = mMap.addCircle(circleOptions);
             mMap.addMarker(new MarkerOptions().position(latLng).title(user.getUsername()));
+        }
         else {
             mMap.addMarker(new MarkerOptions()
                     .position(latLng)
@@ -234,30 +232,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
         return location;
     }
 
-
-
-    public void onSearch(View v){
-        Toast.makeText(MapsActivity.this,"enter Search", Toast.LENGTH_LONG).show();
-        EditText location_tf = (EditText) findViewById(R.id.TFaddress);
-        String location = location_tf.getText().toString();
-        List<Address> addressList = null;
-
-        if(location != null && !(location.equals(""))){
-            Geocoder geocoder = new Geocoder(this);
-            try {
-                addressList = geocoder.getFromLocationName(location, 1);
-
-            }
-            catch (IOException e ){
-                e.printStackTrace();
-            }
-            Address address = addressList.get(0);
-            LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
-
-            changeUi(latLng);
-        }
-    }
-
     public void changeUi(LatLng latLng){
         mMap.clear();
         getEnemy();
@@ -296,7 +270,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
 
 
 
-
     @Override
     public void onLocationChanged( Location location) {
         Toast.makeText(MapsActivity.this,"location changed",Toast.LENGTH_LONG).show();
@@ -305,7 +278,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
         final double longitude = location.getLongitude();
         final String currentUsername = user.getUsername();
         LatLng latLng = new LatLng(latitude,longitude);
-
 
         if (user != null) {
 
@@ -323,9 +295,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
                     }
                 }
             });
-
-
-
         }
         changeUi(latLng);
     }
@@ -352,16 +321,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener, 
             return false;
         }
         else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-            builder.setMessage(marker.getTitle());
-            builder.setCancelable(false);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int id) {
-                    dialog.dismiss();
-                }
-            });
-            AlertDialog alert = builder.create();
-            alert.show();
+            user.showDialogWithPic(title);
             return true;
         }
     }
